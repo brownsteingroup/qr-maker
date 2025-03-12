@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QR Code Generator with kjua</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    label {
+      display: inline-block;
+      width: 150px;
+      margin-bottom: 10px;
+    }
+    #qr-code {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Generator (kjua)</h1>
+  
+  <div>
+    <label for="url-input">Enter URL:</label>
+    <input type="text" id="url-input" placeholder="https://example.com">
+  </div>
+  
+  <div>
+    <label for="color-fill">Foreground Color:</label>
+    <input type="color" id="color-fill" value="#000000">
+  </div>
+  
+  <div>
+    <label for="color-back">Background Color:</label>
+    <input type="color" id="color-back" value="#ffffff">
+  </div>
+
+  <div>
+    <label for="logo">Logo:</label>
+    <input type="file" id="logo">
+  </div>
+  
+  <button id="generate-btn">Generate QR Code</button>
+  
+  <div id="qr-code"></div>
+  
+  <button id="download-btn" style="display:none;">Download QR Code</button>
+  
+  <!-- Include the kjua library from a CDN -->
+  <script src="easy.qrcode.min.js"></script>
+  <script>
+    let myCode;
+
+     // Function to shorten the URL using the is.gd API
+    async function shortenURL(longUrl) {
+        try {
+            const apiUrl = 'https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl);
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            if (data && data.shorturl) {
+                return data.shorturl;
+            } else {
+                console.error('Error shortening URL:', data);
+                return longUrl;
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            return longUrl;
+        }
+    }
+
+    const qrContainer = document.getElementById('qr-code');
+
+    document.getElementById('generate-btn').addEventListener('click', async function() {
+        const urlInput = document.getElementById('url-input').value.trim();
+        if (!urlInput) {
+            alert('Please enter a valid URL.');
+            return;
+        }
+
+        // Shorten the URL so that long UTM parameters won't bloat the QR code
+        const shortUrl = await shortenURL(urlInput);
+
+        // Get color and format settings
+        const fillColor = document.getElementById('color-fill').value;
+        const backColor = document.getElementById('color-back').value;
+        
+        let properties = {
+            crisp: true,
+            text: shortUrl,
+            size: 300,
+            colorDark: fillColor,
+            colorLight: backColor,
+            quietZone: 20,
+            drawer: 'svg'
+        }
+
+        const logoInput = document.getElementById('logo');
+        qrContainer.innerHTML = '';
+        if (logoInput.files && logoInput.files[0]) {
+            const file = logoInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    properties.logo = img.src;
+                    properties.logoMaxWidth = properties.logoMaxHeight = properties.size*0.3;
+                    properties.logoBackgroundColor = backColor;
+                    myCode = new QRCode(qrContainer, properties);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        else{
+            myCode = new QRCode(qrContainer, properties);
+        }
+        console.log(properties);
+        document.getElementById('download-btn').style.display = 'inline-block';
+    
+    });
+
+    // Download functionality
+    document.getElementById('download-btn').addEventListener('click', function() {
+        myCode.download("qr-code");
+    });
+  </script>
+</body>
+</html>
